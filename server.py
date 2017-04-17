@@ -2,9 +2,9 @@
 # -*- coding: utf-8 -*-
 from telegram.ext import Updater, CommandHandler
 from emoji import emojize
-from user import User
-from group import Group
+#from eloquent import DatabaseManager, Model
 import logging
+from models import User, Group
 
 logging.basicConfig(level=logging.DEBUG,
                      format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -23,19 +23,16 @@ def create(bot, update):
     chat = update.message.chat
 
     if 'group' in chat['type']:
-        group = Group.find(chat['id'])
-        if group is None:
-            Group.create(chat)
-            update.message.reply_text('Hola grupo {}'.format(chat['title']))
+        group = Group.first_or_create(telegram_chat_id=chat['id'])
+        update.message.reply_text('Hola grupo {}'.format(chat['title']))
 
-        user = User.find(_from['id'])
+        user = User.where('telegram_chat_id', _from['id']).first()
         if user is None:
-            User.create(_from)
-            update.message.reply_text(u'Hola {}, mucho gusto {}'.format(
-                chat.first_name,
-                emojize(':grinning_face:', use_aliases=True)))
+            user = User.create(name=_from['first_name'], username=_from['username'],
+                telegram_chat_id=_from['id'])
+            update.message.reply_text('Hola {}, mucho gusto.'.format(user.name))
         else:
-            update.message.reply_text('Hola de nuevo {}'.format(user['name']))
+            update.message.reply_text('Hola {}'.format(user.name))
 
 updater = Updater(TOKEN)
 updater.dispatcher.add_handler(CommandHandler('start', start))

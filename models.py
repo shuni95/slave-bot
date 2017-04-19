@@ -34,3 +34,6 @@ class List(Model):
     @belongs_to
     def group(self):
         return Group
+
+class Item(Model):
+    pass

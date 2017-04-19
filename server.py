@@ -24,13 +24,16 @@ def create(bot, update):
     if 'group' in chat['type']:
         group = Group.where('telegram_chat_id', chat['id']).first()
         if group is None:
-            group = Group.create(telegram_chat_id=chat['id'], title=chat['title'])
-        update.message.reply_text('Hola grupo {}'.format(chat['title']))
+            group = Group.create(telegram_chat_id=chat['id'],
+                                 title=chat['title'])
+        bot.sendMessage(chat_id=chat['id'],
+                        text='Hola grupo {}'.format(chat['title']))
 
         user = User.where('telegram_chat_id', _from['id']).first()
         if user is None:
-            user = User.create(name=_from['first_name'], username=_from['username'],
-                telegram_chat_id=_from['id'])
+            user = User.create(name=_from['first_name'],
+                               username=_from['username'],
+                               telegram_chat_id=_from['id'])
             update.message.reply_text('Hola {}, mucho gusto.'.format(user.name))
         else:
             update.message.reply_text('Hola {}'.format(user.name))

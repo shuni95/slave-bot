@@ -38,9 +38,12 @@ def create(bot, update):
         else:
             update.message.reply_text('Hola {}'.format(user.name))
 
-        _list = List(status='O')
-        group.lists().save(_list)
-        bot.sendMessage(chat_id=chat['id'], text='Lista creada')
+        list_active = group.lists().where('status', 'O').first()
+        if list_active is None:
+            group.lists().save(List(status='O'))
+            bot.sendMessage(chat_id=chat['id'], text='Lista creada')
+        else:
+            bot.sendMessage(chat_id=chat['id'], text='Ya hay una lista abierta')
 
 updater = Updater(TOKEN)
 updater.dispatcher.add_handler(CommandHandler('start', start))

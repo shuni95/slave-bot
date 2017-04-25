@@ -1,5 +1,5 @@
 from orator import DatabaseManager, Model
-from orator.orm import has_many, belongs_to
+from orator.orm import has_many, belongs_to, belongs_to_many
 
 config = {
     'mysql': {
@@ -35,5 +35,13 @@ class List(Model):
     def group(self):
         return Group
 
+    @belongs_to_many('list_x_item')
+    def items(self):
+        return Item
+
 class Item(Model):
-    pass
+    __fillable__ = ['name', 'price']
+
+    @belongs_to_many('list_x_item')
+    def lists(self):
+        return List

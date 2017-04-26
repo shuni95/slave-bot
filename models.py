@@ -70,3 +70,7 @@ class Item(Model):
     def price_format(self):
         price = float(self.get_raw_attribute('price'))
         return 'S/ {0:.2g}'.format(price / 100)
+
+    @scope
+    def defaults(self, query):
+        return query.where_is_default(True)

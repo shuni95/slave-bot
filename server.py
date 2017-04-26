@@ -76,7 +76,7 @@ def items(bot, update):
     send_items(bot, chat['id'])
 
 def send_items(bot, chat_id):
-    items = Item.where('is_default', True).get()
+    items = Item.defaults().get()
 
     keyboard = []
     for i in xrange(0, len(items), 2):

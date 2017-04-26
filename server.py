@@ -74,10 +74,15 @@ def send_items(bot, chat_id):
     items = Item.where('is_default', True).get()
 
     keyboard = []
-    for item in items:
-        keyboard.append([InlineKeyboardButton(
-            '{} - {}'.format(item.name, item.price_format),
-            callback_data='item {}'.format(item.id))])
+    for i in xrange(0, len(items), 2):
+        left = items.get(i)
+        right = items.get(i+1)
+        keyboard.append([
+            InlineKeyboardButton('{} - {}'.format(left.name, left.price_format),
+                callback_data='item {}'.format(left.id)),
+            InlineKeyboardButton('{} - {}'.format(right.name, right.price_format),
+                callback_data='item {}'.format(right.id))
+        ])
 
     bot.send_message(chat_id=chat_id,
                      text='Escoge un producto',

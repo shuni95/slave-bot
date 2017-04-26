@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import logging
-from telegram.ext import Updater, CommandHandler
+from telegram.ext import Updater, CommandHandler, CallbackQueryHandler
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from emoji import emojize
 from models import User, Group, List, Item
@@ -50,7 +50,21 @@ def create(bot, update):
 
         send_items(bot, chat['id'])
 
-# def add(bot, update):
+
+def add(bot, update):
+    query = update.callback_query
+    data = query.data.split()
+    chat = query.message.chat
+    _from = query.from_user
+
+    item = Item.find(data[1])
+    group = Group.where('telegram_chat_id', chat['id']).first()
+    user = User.where('telegram_chat_id', _from['id']).first()
+
+    list_active = group.lists().where('status', 'O').first()
+    list_active.items().attach(item, {'user_id': user.id})
+
+    query.message.reply_text('{} fue agregado a la lista.'.format(item.name))
 
 def items(bot, update):
     chat = update.message.chat
@@ -74,7 +88,7 @@ updater = Updater(TOKEN)
 updater.dispatcher.add_handler(CommandHandler('start', start))
 updater.dispatcher.add_handler(CommandHandler('create', create))
 updater.dispatcher.add_handler(CommandHandler('items', items))
-# updater.dispatcher.add_handler(CommandHandler('add', add))
+updater.dispatcher.add_handler(CallbackQueryHandler(add, pattern='item [0-9]'))
 updater.bot.setWebhook(SITE_URL)
 updater.start_webhook(port=5000)
 updater.idle()

@@ -1,5 +1,5 @@
 from orator import DatabaseManager, Model
-from orator.orm import has_many, belongs_to, belongs_to_many
+from orator.orm import has_many, belongs_to, belongs_to_many, accessor
 
 config = {
     'mysql': {
@@ -45,3 +45,8 @@ class Item(Model):
     @belongs_to_many('list_x_item')
     def lists(self):
         return List
+
+    @accessor
+    def price_format(self):
+        price = float(self.get_raw_attribute('price'))
+        return 'S/ {0:.2g}'.format(price / 100)

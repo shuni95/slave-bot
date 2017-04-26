@@ -2,8 +2,9 @@
 # -*- coding: utf-8 -*-
 import logging
 from telegram.ext import Updater, CommandHandler
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from emoji import emojize
-from models import User, Group, List
+from models import User, Group, List, Item
 
 logging.basicConfig(level=logging.DEBUG,
                      format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -26,28 +27,54 @@ def create(bot, update):
         if group is None:
             group = Group.create(telegram_chat_id=chat['id'],
                                  title=chat['title'])
-        bot.sendMessage(chat_id=chat['id'],
-                        text='Hola grupo {}'.format(chat['title']))
-
-        user = User.where('telegram_chat_id', _from['id']).first()
-        if user is None:
-            user = User.create(name=_from['first_name'],
-                               username=_from['username'],
-                               telegram_chat_id=_from['id'])
-            update.message.reply_text('Hola {}, mucho gusto.'.format(user.name))
-        else:
-            update.message.reply_text('Hola {}'.format(user.name))
 
         list_active = group.lists().where('status', 'O').first()
         if list_active is None:
             group.lists().save(List(status='O'))
-            bot.sendMessage(chat_id=chat['id'], text='Lista creada')
+
+            bot.send_message(chat_id=chat['id'],
+                text='Hola grupo {}'.format(chat['title']))
+
+            user = User.where('telegram_chat_id', _from['id']).first()
+            if user is None:
+                user = User.create(name=_from['first_name'],
+                                   username=_from['username'],
+                                   telegram_chat_id=_from['id'])
+                update.message.reply_text('Hola {}, mucho gusto.'.format(user.name))
+            else:
+                update.message.reply_text('Hola {}'.format(user.name))
+
+            bot.send_message(chat_id=chat['id'], text='Lista creada')
         else:
-            bot.sendMessage(chat_id=chat['id'], text='Ya hay una lista abierta')
+            bot.send_message(chat_id=chat['id'], text='Ya hay una lista abierta')
+
+        send_items(bot, chat['id'])
+
+# def add(bot, update):
+
+def items(bot, update):
+    chat = update.message.chat
+    send_items(bot, chat['id'])
+
+def send_items(bot, chat_id):
+    items = Item.where('is_default', True).get()
+
+    keyboard = []
+    for item in items:
+        keyboard.append([InlineKeyboardButton(
+            '{} - {}'.format(item.name, item.price_format),
+            callback_data='item {}'.format(item.id))])
+
+    bot.send_message(chat_id=chat_id,
+                     text='Escoge un producto',
+                     reply_markup=InlineKeyboardMarkup(keyboard))
+
 
 updater = Updater(TOKEN)
 updater.dispatcher.add_handler(CommandHandler('start', start))
 updater.dispatcher.add_handler(CommandHandler('create', create))
+updater.dispatcher.add_handler(CommandHandler('items', items))
+# updater.dispatcher.add_handler(CommandHandler('add', add))
 updater.bot.setWebhook(SITE_URL)
 updater.start_webhook(port=5000)
 updater.idle()

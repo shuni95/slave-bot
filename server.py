@@ -28,9 +28,9 @@ def create(bot, update):
             group = Group.create(telegram_chat_id=chat['id'],
                                  title=chat['title'])
 
-        list_active = group.lists().where('status', 'O').first()
+        list_active = group.lists().opened().first()
         if list_active is None:
-            group.lists().save(List(status='O'))
+            group.lists().save(List())
 
             bot.send_message(chat_id=chat['id'],
                 text='Hola grupo {}'.format(chat['title']))
@@ -61,7 +61,7 @@ def add(bot, update):
     group = Group.where('telegram_chat_id', chat['id']).first()
     user = User.where('telegram_chat_id', _from['id']).first()
 
-    list_active = group.lists().where('status', 'O').first()
+    list_active = group.lists().opened().first()
     list_active.items().attach(item, {'user_id': user.id})
 
     query.message.reply_text('{} fue agregado a la lista.'.format(item.name))
@@ -90,11 +90,10 @@ def send_items(bot, chat_id):
 def close(bot, update):
     chat = update.message.chat
     group = Group.where('telegram_chat_id', chat['id']).first()
-    list_active = group.lists().where('status', 'O').first()
+    list_active = group.lists().opened().first()
 
     if list_active is not None:
-        list_active.status = 'C'
-        list_active.save()
+        list_active.close()
 
         message = 'Lista cerrada'
     else:
@@ -105,17 +104,17 @@ def close(bot, update):
 def _open(bot, update):
     chat = update.message.chat
     group = Group.where('telegram_chat_id', chat['id']).first()
-    list_active = group.lists().where('status', 'C').first()
+    list_active = group.lists().closed().first()
 
     if list_active is not None:
-        list_active.status = 'O'
-        list_active.save()
+        list_active.open()
 
         message = 'Lista de nuevo abierta'
     else:
         message = 'No habia ninguna lista cerrada'
 
     bot.send_message(chat_id=chat['id'], text=message)
+    send_items(bot, chat['id'])
 
 updater = Updater(TOKEN)
 updater.dispatcher.add_handler(CommandHandler('start', start))

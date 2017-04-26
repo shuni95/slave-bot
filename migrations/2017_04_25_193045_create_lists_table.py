@@ -1,6 +1,5 @@
 from orator.migrations import Migration
 
-
 class CreateListsTable(Migration):
 
     def up(self):
@@ -9,7 +8,7 @@ class CreateListsTable(Migration):
         """
         with self.schema.create('lists') as table:
             table.increments('id')
-            table.char('status', 1)
+            table.char('status', 1).default('O')
             table.integer('group_id').unsigned()
             table.timestamps()
 

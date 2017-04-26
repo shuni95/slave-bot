@@ -1,5 +1,5 @@
 from orator import DatabaseManager, Model
-from orator.orm import has_many, belongs_to, belongs_to_many, accessor
+from orator.orm import has_many, belongs_to, belongs_to_many, accessor, scope
 
 config = {
     'mysql': {
@@ -29,6 +29,10 @@ class Group(Model):
         return List
 
 class List(Model):
+    OPENED = 'O'
+    CLOSED = 'C'
+    DONE = 'D'
+
     __fillable__ = ['status']
 
     @belongs_to
@@ -38,6 +42,22 @@ class List(Model):
     @belongs_to_many('list_x_item')
     def items(self):
         return Item
+
+    @scope
+    def opened(self, query):
+        return query.where_status(List.OPENED)
+
+    @scope
+    def closed(self, query):
+        return query.where_status(List.CLOSED)
+
+    def open(self):
+        self.status = List.OPENED
+        self.save()
+
+    def close(self):
+        self.status = List.CLOSED
+        self.save()
 
 class Item(Model):
     __fillable__ = ['name', 'price']

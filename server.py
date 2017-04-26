@@ -62,9 +62,14 @@ def add(bot, update):
     user = User.where('telegram_chat_id', _from['id']).first()
 
     list_active = group.lists().opened().first()
-    list_active.items().attach(item, {'user_id': user.id})
 
-    query.message.reply_text('{} fue agregado a la lista.'.format(item.name))
+    if list_active is not None:
+        list_active.items().attach(item, {'user_id': user.id})
+        message = '{} fue agregado a la lista.'.format(item.name)
+    else:
+        message = 'No hay una lista abierta'
+
+    query.message.reply_text(message)
 
 def items(bot, update):
     chat = update.message.chat

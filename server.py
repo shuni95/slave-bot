@@ -102,11 +102,27 @@ def close(bot, update):
 
     bot.send_message(chat_id=chat['id'], text=message)
 
+def _open(bot, update):
+    chat = update.message.chat
+    group = Group.where('telegram_chat_id', chat['id']).first()
+    list_active = group.lists().where('status', 'C').first()
+
+    if list_active is not None:
+        list_active.status = 'O'
+        list_active.save()
+
+        message = 'Lista de nuevo abierta'
+    else:
+        message = 'No habia ninguna lista cerrada'
+
+    bot.send_message(chat_id=chat['id'], text=message)
+
 updater = Updater(TOKEN)
 updater.dispatcher.add_handler(CommandHandler('start', start))
 updater.dispatcher.add_handler(CommandHandler('create', create))
 updater.dispatcher.add_handler(CommandHandler('items', items))
 updater.dispatcher.add_handler(CommandHandler('close', close))
+updater.dispatcher.add_handler(CommandHandler('open', _open))
 updater.dispatcher.add_handler(CallbackQueryHandler(add, pattern='item [0-9]'))
 updater.bot.setWebhook(SITE_URL)
 updater.start_webhook(port=5000)

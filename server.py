@@ -84,15 +84,29 @@ def send_items(bot, chat_id):
                 callback_data='item {}'.format(right.id))
         ])
 
-    bot.send_message(chat_id=chat_id,
-                     text='Escoge un producto',
+    bot.send_message(chat_id=chat_id, text='Escoge un producto',
                      reply_markup=InlineKeyboardMarkup(keyboard))
 
+def close(bot, update):
+    chat = update.message.chat
+    group = Group.where('telegram_chat_id', chat['id']).first()
+    list_active = group.lists().where('status', 'O').first()
+
+    if list_active is not None:
+        list_active.status = 'C'
+        list_active.save()
+
+        message = 'Lista cerrada'
+    else:
+        message = 'No habia lista abierta'
+
+    bot.send_message(chat_id=chat['id'], text=message)
 
 updater = Updater(TOKEN)
 updater.dispatcher.add_handler(CommandHandler('start', start))
 updater.dispatcher.add_handler(CommandHandler('create', create))
 updater.dispatcher.add_handler(CommandHandler('items', items))
+updater.dispatcher.add_handler(CommandHandler('close', close))
 updater.dispatcher.add_handler(CallbackQueryHandler(add, pattern='item [0-9]'))
 updater.bot.setWebhook(SITE_URL)
 updater.start_webhook(port=5000)

@@ -26,3 +26,7 @@ class ItemTableSeeder(Seeder):
                                        'is_default': True})
         self.db.table('items').insert({'name': 'Kilometrico', 'price': 800,
                                        'is_default': True})
+        self.db.table('items').insert({'name': 'Batimix', 'price': 350,
+                                       'is_default': True})
+        self.db.table('items').insert({'name': 'Cacho', 'price': 90,
+                                       'is_default': True})

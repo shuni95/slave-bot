@@ -10,6 +10,7 @@ class CreateListsTable(Migration):
             table.increments('id')
             table.char('status', 1).default('O')
             table.integer('group_id').unsigned()
+            table.integer('user_id').unsigned()
             table.timestamps()
 
     def down(self):

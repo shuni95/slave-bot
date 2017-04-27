@@ -33,7 +33,7 @@ class List(Model):
     CLOSED = 'C'
     DONE = 'D'
 
-    __fillable__ = ['status']
+    __fillable__ = ['status', 'user_id']
 
     @belongs_to
     def group(self):
@@ -42,6 +42,10 @@ class List(Model):
     @belongs_to_many('list_x_item')
     def items(self):
         return Item
+
+    @belongs_to
+    def slave(self):
+        return User
 
     @scope
     def opened(self, query):

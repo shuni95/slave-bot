@@ -28,28 +28,31 @@ def create(bot, update):
             group = Group.create(telegram_chat_id=chat['id'],
                                  title=chat['title'])
 
+        bot.send_message(chat_id=chat['id'],
+            text='Hola grupo {}'.format(chat['title']))
+
         list_active = group.lists().opened().first()
+
         if list_active is None:
-            group.lists().save(List())
-
-            bot.send_message(chat_id=chat['id'],
-                text='Hola grupo {}'.format(chat['title']))
-
             user = User.where('telegram_chat_id', _from['id']).first()
+
             if user is None:
                 user = User.create(name=_from['first_name'],
                                    username=_from['username'],
                                    telegram_chat_id=_from['id'])
-                update.message.reply_text('Hola {}, mucho gusto.'.format(user.name))
+                update.message.reply_text('Hola esclavo {}, mucho gusto.'.format(user.name))
             else:
-                update.message.reply_text('Hola {}'.format(user.name))
+                update.message.reply_text('Hola esclavo {}'.format(user.name))
 
+            group.lists().save(List(user_id=user.id))
             bot.send_message(chat_id=chat['id'], text='Lista creada')
         else:
             bot.send_message(chat_id=chat['id'], text='Ya hay una lista abierta')
 
         send_items(bot, chat['id'])
-
+    else:
+        bot.send_message(chat_id=chat['id'],
+            text='Lo siento, el Bot solo esta disponible para grupos')
 
 def add(bot, update):
     query = update.callback_query
@@ -92,15 +95,21 @@ def send_items(bot, chat_id):
     bot.send_message(chat_id=chat_id, text='Escoge un producto',
                      reply_markup=InlineKeyboardMarkup(keyboard))
 
+def check_slave(list_active, _from):
+    return list_active.slave.telegram_chat_id == _from.id
+
 def close(bot, update):
     chat = update.message.chat
+    _from = update.message.from_user
     group = Group.where('telegram_chat_id', chat['id']).first()
     list_active = group.lists().opened().first()
 
     if list_active is not None:
-        list_active.close()
-
-        message = 'Lista cerrada'
+        if check_slave(list_active, _from):
+            list_active.close()
+            message = 'Lista cerrada'
+        else:
+            message = 'Solo el esclavo puede eliminar la lista'
     else:
         message = 'No habia lista abierta'
 
@@ -108,18 +117,25 @@ def close(bot, update):
 
 def _open(bot, update):
     chat = update.message.chat
+    _from = update.message.from_user
     group = Group.where('telegram_chat_id', chat['id']).first()
     list_active = group.lists().closed().first()
+    is_slave = False
 
     if list_active is not None:
-        list_active.open()
-
-        message = 'Lista de nuevo abierta'
+        is_slave = check_slave(list_active, _from)
+        if is_slave:
+            list_active.open()
+            message = 'Lista de nuevo abierta'
+        else:
+            message = 'Solo el esclavo puede reabrir la lista'
     else:
         message = 'No habia ninguna lista cerrada'
 
     bot.send_message(chat_id=chat['id'], text=message)
-    send_items(bot, chat['id'])
+
+    if is_slave:
+        send_items(bot, chat['id'])
 
 updater = Updater(TOKEN)
 updater.dispatcher.add_handler(CommandHandler('start', start))

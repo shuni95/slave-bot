@@ -1,11 +1,14 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-import logging
+import sys, os, logging
+from flask import Flask, request
 from telegram.ext import Updater, CommandHandler, CallbackQueryHandler
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+import telegram
 from emoji import emojize
 from models import User, Group, List, Item
 
+sys.path.append(os.path.join(os.path.abspath('.'), 'venv/lib/site-packages'))
 logging.basicConfig(level=logging.DEBUG,
                      format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
@@ -13,6 +16,11 @@ logger = logging.getLogger()
 
 TOKEN='#'
 SITE_URL='#'
+
+global bot, updater
+bot = telegram.Bot(token=TOKEN)
+app = Flask(__name__)
+updater = Updater(TOKEN)
 
 def start(bot, update):
     update.message.reply_text(u'Hola!, Soy SlaveBot {}'.format(
@@ -137,13 +145,33 @@ def _open(bot, update):
     if is_slave:
         send_items(bot, chat['id'])
 
-updater = Updater(TOKEN)
 updater.dispatcher.add_handler(CommandHandler('start', start))
 updater.dispatcher.add_handler(CommandHandler('create', create))
 updater.dispatcher.add_handler(CommandHandler('items', items))
 updater.dispatcher.add_handler(CommandHandler('close', close))
 updater.dispatcher.add_handler(CommandHandler('open', _open))
 updater.dispatcher.add_handler(CallbackQueryHandler(add, pattern='item [0-9]'))
-updater.bot.setWebhook(SITE_URL)
-updater.start_webhook(port=5000)
-updater.idle()
+
+@app.route('/HOOK', methods=['POST'])
+def webhook_handler():
+    if request.method == "POST":
+        # retrieve the message in JSON and then transform it to Telegram object
+        update = telegram.Update.de_json(request.get_json(force=True), bot)
+        updater.dispatcher.process_update(update)
+    return 'ok'
+
+
+@app.route('/set_webhook', methods=['GET', 'POST'])
+def set_webhook():
+    s = bot.setWebhook(SITE_URL + '/HOOK')
+    if s:
+        return "webhook setup ok"
+    else:
+        return "webhook setup failed"
+
+@app.route('/')
+def index():
+    return '.'
+
+if __name__ == '__main__':
+    app.run(debug=True)

@@ -6,7 +6,7 @@ from telegram.ext import Updater, CommandHandler, CallbackQueryHandler
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 import telegram
 from emoji import emojize
-from models import User, Group, List, Item
+from models import User, Group, List, Item, db
 
 sys.path.append(os.path.join(os.path.abspath('.'), 'venv/lib/site-packages'))
 logging.basicConfig(level=logging.DEBUG,
@@ -70,11 +70,16 @@ def add(bot, update):
 
     item = Item.find(data[1])
     group = Group.where('telegram_chat_id', chat['id']).first()
-    user = User.where('telegram_chat_id', _from['id']).first()
-
     list_active = group.lists().opened().first()
 
     if list_active is not None:
+        user = User.where('telegram_chat_id', _from['id']).first()
+
+        if user is None:
+            user = User.create(name=_from['first_name'],
+                               username=_from['username'],
+                               telegram_chat_id=_from['id'])
+
         list_active.items().attach(item, {'user_id': user.id})
         message = '{} fue agregado a la lista.'.format(item.name)
     else:
@@ -145,11 +150,30 @@ def _open(bot, update):
     if is_slave:
         send_items(bot, chat['id'])
 
+def _list(bot, update):
+    chat = update.message.chat
+    items = db.table('list_x_item')\
+              .select(db.raw('sum(items.price) as total, users.name'))\
+              .join('items', 'list_x_item.item_id', '=', 'items.id')\
+              .join('users', 'list_x_item.user_id', '=', 'users.id')\
+              .group_by('user_id')\
+              .get()
+
+    if len(items) > 0:
+        message = ""
+        for item in items:
+            message += "S/ " + str(item.total/100) + " - " + item.name + "\n"
+    else:
+        message = "No hay elementos en la lista"
+
+    bot.send_message(chat_id=chat['id'], text=message)
+
 updater.dispatcher.add_handler(CommandHandler('start', start))
 updater.dispatcher.add_handler(CommandHandler('create', create))
 updater.dispatcher.add_handler(CommandHandler('items', items))
 updater.dispatcher.add_handler(CommandHandler('close', close))
 updater.dispatcher.add_handler(CommandHandler('open', _open))
+updater.dispatcher.add_handler(CommandHandler('list', _list))
 updater.dispatcher.add_handler(CallbackQueryHandler(add, pattern='item [0-9]'))
 
 @app.route('/HOOK', methods=['POST'])

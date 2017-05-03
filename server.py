@@ -152,19 +152,26 @@ def _open(bot, update):
 
 def _list(bot, update):
     chat = update.message.chat
-    items = db.table('list_x_item')\
-              .select(db.raw('sum(items.price) as total, users.name'))\
-              .join('items', 'list_x_item.item_id', '=', 'items.id')\
-              .join('users', 'list_x_item.user_id', '=', 'users.id')\
-              .group_by('user_id')\
-              .get()
+    group = Group.where('telegram_chat_id', chat['id']).first()
+    list_active = group.lists().opened().first()
 
-    if len(items) > 0:
-        message = ""
-        for item in items:
-            message += "S/ " + str(item.total/100) + " - " + item.name + "\n"
+    if list_active is not None:
+        items = db.table('list_x_item')\
+                  .select(db.raw('sum(items.price) as total, users.name'))\
+                  .join('items', 'list_x_item.item_id', '=', 'items.id')\
+                  .join('users', 'list_x_item.user_id', '=', 'users.id')\
+                  .where('list_id', list_active.id)\
+                  .group_by('user_id')\
+                  .get()
+
+        if len(items) > 0:
+            message = ""
+            for item in items:
+                message += "S/ " + str(item.total/100) + " - " + item.name + "\n"
+        else:
+            message = "No hay elementos en la lista"
     else:
-        message = "No hay elementos en la lista"
+        message = 'No hay lista abierta'
 
     bot.send_message(chat_id=chat['id'], text=message)
 

@@ -49,11 +49,11 @@ class List(Model):
 
     @scope
     def opened(self, query):
-        return query.where_status(List.OPENED)
+        return query.where_status(List.OPENED).order_by('created_at', 'DESC')
 
     @scope
     def closed(self, query):
-        return query.where_status(List.CLOSED)
+        return query.where_status(List.CLOSED).order_by('created_at', 'DESC')
 
     def open(self):
         self.status = List.OPENED
@@ -80,4 +80,5 @@ class Item(Model):
         return query.where_is_default(True)
 
 class Payment(Model):
-    pass
+    __fillable__ = ['user_id', 'list_id']
+    __timestamps__ = False

@@ -216,11 +216,41 @@ def paylist(bot, update):
                 )
             ])
 
-            bot.send_message(chat_id=chat['id'], text='Lista de pagos',
+        bot.send_message(chat_id=chat['id'], text='Lista de pagos',
                      reply_markup=InlineKeyboardMarkup(keyboard))
     else:
         message = 'No hay lista abierta'
         bot.send_message(chat_id=chat['id'], text=message)
+
+def pay(bot, update):
+    query = update.callback_query
+    data = query.data.split()
+    print(data)
+    chat = query.message.chat
+    _from = query.from_user
+    group = Group.where('telegram_chat_id', chat['id']).first()
+    list_closed = group.lists().closed().first()
+    user_id = data[1]
+    list_id = data[2]
+
+    if list_closed is not None:
+        if check_slave(list_closed, _from):
+            payment = Payment.where('list_id', list_id)\
+                             .where('user_id', user_id)\
+                             .first()
+            user = User.find(user_id)
+
+            if payment is None:
+                Payment.create(user_id=user_id, list_id=list_id)
+                message = '{} ha pagado.'.format(user.name)
+            else:
+                message = '{} ya pago anteriormente.'.format(user.name)
+        else:
+            message = 'Solo el esclavo puede decir si alguien pago su deuda'
+    else:
+        message = 'La lista debe estar cerrada para realizar los pagos'
+
+    bot.send_message(chat_id=chat['id'], text=message)
 
 updater.dispatcher.add_handler(CommandHandler('start', start))
 updater.dispatcher.add_handler(CommandHandler('create', create))
@@ -229,7 +259,8 @@ updater.dispatcher.add_handler(CommandHandler('close', close))
 updater.dispatcher.add_handler(CommandHandler('open', _open))
 updater.dispatcher.add_handler(CommandHandler('list', _list))
 updater.dispatcher.add_handler(CommandHandler('paylist', paylist))
-updater.dispatcher.add_handler(CallbackQueryHandler(add, pattern='item [0-9]'))
+updater.dispatcher.add_handler(CallbackQueryHandler(add, pattern='item [0-9]+'))
+updater.dispatcher.add_handler(CallbackQueryHandler(pay, pattern='pay [0-9]+ [0-9]+'))
 
 @app.route('/HOOK', methods=['POST'])
 def webhook_handler():

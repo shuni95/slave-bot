@@ -26,6 +26,21 @@ def start(bot, update):
     update.message.reply_text(u'Hola!, Soy SlaveBot {}'.format(
         emojize(':grinning_face:', use_aliases=True)))
 
+def _help(bot, update):
+    chat = update.message.chat
+
+    message = "Lista de comandos\n"
+    message += "=================\n"
+    message += "/start - Saludo\n"
+    message += "/create - Crear Lista de pedidos\n"
+    message += "/items - Listar items disponibles en el grupo\n"
+    message += "/close - Cerrar Lista de pedidos\n"
+    message += "/open - Reabrir Lista de pedidos\n"
+    message += "/list - Mostrar detalle de lista de pedido actual\n"
+    message += "/paylist - Mostrar nombre y monto de lista de pedido actual"
+
+    bot.send_message(chat_id=chat['id'], text=message)
+
 def create(bot, update):
     _from = update.message.from_user
     chat = update.message.chat
@@ -253,6 +268,7 @@ def pay(bot, update):
     bot.send_message(chat_id=chat['id'], text=message)
 
 updater.dispatcher.add_handler(CommandHandler('start', start))
+updater.dispatcher.add_handler(CommandHandler('help', _help))
 updater.dispatcher.add_handler(CommandHandler('create', create))
 updater.dispatcher.add_handler(CommandHandler('items', items))
 updater.dispatcher.add_handler(CommandHandler('close', close))

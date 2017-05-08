@@ -39,7 +39,7 @@ class List(Model):
     def group(self):
         return Group
 
-    @belongs_to_many('list_x_item')
+    @belongs_to_many('list_x_item', with_pivot=['user_id'])
     def items(self):
         return Item
 

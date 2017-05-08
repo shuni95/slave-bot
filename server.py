@@ -156,18 +156,26 @@ def _list(bot, update):
     list_active = group.lists().opened().first()
 
     if list_active is not None:
-        items = db.table('list_x_item')\
-                  .select(db.raw('sum(items.price) as total, users.name'))\
-                  .join('items', 'list_x_item.item_id', '=', 'items.id')\
-                  .join('users', 'list_x_item.user_id', '=', 'users.id')\
-                  .where('list_id', list_active.id)\
-                  .group_by('user_id')\
-                  .get()
+        user_amounts = db.table('list_x_item')\
+            .select(db.raw('sum(items.price) as total, users.name, users.id as user_id'))\
+            .join('items', 'list_x_item.item_id', '=', 'items.id')\
+            .join('users', 'list_x_item.user_id', '=', 'users.id')\
+            .where('list_id', list_active.id)\
+            .group_by('list_x_item.user_id')\
+            .get()
 
-        if len(items) > 0:
+        if len(user_amounts) > 0:
             message = ""
-            for item in items:
-                message += "S/ " + str(item.total/100) + " - " + item.name + "\n"
+            all_items = list_active.items
+
+            for user_amount in user_amounts:
+                message += "{} S/{}\n".format(
+                    user_amount.name, str(user_amount.total/100))
+
+                user_items = all_items.filter(
+                    lambda item: item.pivot.user_id == user_amount.user_id)
+                for item in user_items:
+                    message += "> {} {}\n".format(item.name, item.price_format)
         else:
             message = "No hay elementos en la lista"
     else:

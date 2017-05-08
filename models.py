@@ -78,3 +78,6 @@ class Item(Model):
     @scope
     def defaults(self, query):
         return query.where_is_default(True)
+
+class Payment(Model):
+    pass

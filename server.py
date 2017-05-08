@@ -6,7 +6,7 @@ from telegram.ext import Updater, CommandHandler, CallbackQueryHandler
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 import telegram
 from emoji import emojize
-from models import User, Group, List, Item, db
+from models import User, Group, List, Item, Payment, db
 
 sys.path.append(os.path.join(os.path.abspath('.'), 'venv/lib/site-packages'))
 logging.basicConfig(level=logging.DEBUG,
@@ -183,12 +183,52 @@ def _list(bot, update):
 
     bot.send_message(chat_id=chat['id'], text=message)
 
+def paylist(bot, update):
+    chat = update.message.chat
+    group = Group.where('telegram_chat_id', chat['id']).first()
+    list_active = group.lists().opened().first()
+
+    if list_active is not None:
+        message = ''
+        user_amounts = db.table('list_x_item')\
+            .select(db.raw('sum(items.price) as total, users.name, users.id as user_id'))\
+            .join('items', 'list_x_item.item_id', '=', 'items.id')\
+            .join('users', 'list_x_item.user_id', '=', 'users.id')\
+            .where('list_id', list_active.id)\
+            .group_by('list_x_item.user_id')\
+            .get()
+
+        keyboard = []
+        for user_amount in user_amounts:
+            payment = Payment.where('list_id', list_active.id)\
+                             .where('user_id', user_amount.user_id)\
+                             .first()
+
+            # To - Do
+            # Print grin emoji when exists
+            # And angry when not exists
+
+            keyboard.append([
+                InlineKeyboardButton(u'{} - S/{}'.format(
+                    user_amount.name, str(user_amount.total/100)),
+                    callback_data='pay {} {}'.format(
+                        user_amount.user_id, list_active.id)
+                )
+            ])
+
+            bot.send_message(chat_id=chat['id'], text='Lista de pagos',
+                     reply_markup=InlineKeyboardMarkup(keyboard))
+    else:
+        message = 'No hay lista abierta'
+        bot.send_message(chat_id=chat['id'], text=message)
+
 updater.dispatcher.add_handler(CommandHandler('start', start))
 updater.dispatcher.add_handler(CommandHandler('create', create))
 updater.dispatcher.add_handler(CommandHandler('items', items))
 updater.dispatcher.add_handler(CommandHandler('close', close))
 updater.dispatcher.add_handler(CommandHandler('open', _open))
 updater.dispatcher.add_handler(CommandHandler('list', _list))
+updater.dispatcher.add_handler(CommandHandler('paylist', paylist))
 updater.dispatcher.add_handler(CallbackQueryHandler(add, pattern='item [0-9]'))
 
 @app.route('/HOOK', methods=['POST'])

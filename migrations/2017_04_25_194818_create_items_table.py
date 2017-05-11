@@ -12,6 +12,7 @@ class CreateItemsTable(Migration):
             table.string('name')
             table.float('price')
             table.big_integer('group_id')
+            table.soft_deletes()
 
     def down(self):
         """

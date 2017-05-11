@@ -6,7 +6,7 @@ from telegram.ext import Updater, CommandHandler, CallbackQueryHandler
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 import telegram
 from emoji import emojize
-from models import User, Group, List, Item, Payment, db
+from models import User, Group, List, Item, db
 
 sys.path.append(os.path.join(os.path.abspath('.'), 'venv/lib/site-packages'))
 logging.basicConfig(level=logging.DEBUG,
@@ -68,7 +68,11 @@ def create(bot, update):
             else:
                 update.message.reply_text('Hola esclavo {}'.format(user.name))
 
-            group.lists().save(List(user_id=user.id))
+            _list = List()
+            _list.user_id = _from['id']
+            _list.group_id = chat['id']
+            _list.save()
+
             message = 'Lista creada'
         else:
             message = 'Ya hay una lista abierta'
@@ -242,6 +246,27 @@ def paylist(bot, update):
 
     bot.send_message(chat_id=chat['id'], text=message)
 
+def add_item(bot, update):
+    chat = update.message.chat
+    text = update.message.text[10:]
+    group = Group.find(chat['id'])
+    args = text.split(',')
+
+    if len(args) == 2:
+        name = args[0].strip()
+        price = args[1].strip()
+
+        if group.items.count() < 8:
+            group.items().save(Item(name=name, price=price))
+
+            message = u'{} ha sido agregado a los items del grupo'.format(name)
+        else:
+            message = u'No se puede agregar más items'
+    else:
+        message = u'Son necesarios el nombre y el precio separados por comas'
+
+    bot.send_message(chat_id=chat['id'], text=message)
+
 updater.dispatcher.add_handler(CommandHandler('start', start))
 updater.dispatcher.add_handler(CommandHandler('help', _help))
 updater.dispatcher.add_handler(CommandHandler('create', create))
@@ -251,6 +276,7 @@ updater.dispatcher.add_handler(CommandHandler('open', _open))
 updater.dispatcher.add_handler(CommandHandler('list', _list))
 updater.dispatcher.add_handler(CommandHandler('paylist', paylist))
 updater.dispatcher.add_handler(CallbackQueryHandler(add, pattern='item [0-9]+'))
+updater.dispatcher.add_handler(CommandHandler('add_item', add_item))
 
 @app.route('/telegram_hook', methods=['POST'])
 def webhook_handler():

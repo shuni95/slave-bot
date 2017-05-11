@@ -1,4 +1,4 @@
-from orator import DatabaseManager, Model
+from orator import DatabaseManager, Model, SoftDeletes
 from orator.orm import has_many, belongs_to, belongs_to_many, accessor, scope
 
 config = {
@@ -18,10 +18,12 @@ Model.set_connection_resolver(db)
 
 class User(Model):
     __fillable__ = ['id', 'name', 'username']
+
     __timestamps__ = False
 
 class Group(Model):
     __fillable__ = ['id', 'title']
+
     __timestamps__ = False
 
     @has_many
@@ -37,7 +39,7 @@ class List(Model):
     CLOSED = 'C'
     DONE = 'D'
 
-    __fillable__ = ['status', 'user_id']
+    __fillable__ = ['status', 'user_id', 'group_id']
 
     @belongs_to
     def group(self):
@@ -67,8 +69,12 @@ class List(Model):
         self.status = List.CLOSED
         self.save()
 
-class Item(Model):
-    __fillable__ = ['name', 'price']
+class Item(SoftDeletes, Model):
+    __fillable__ = ['name', 'price', 'group_id']
+
+    __timestamps__ = False
+
+    __dates__ = ['deleted_at']
 
     @belongs_to_many('list_x_item')
     def lists(self):
@@ -82,11 +88,3 @@ class Item(Model):
     def price_format(self):
         price = float(self.get_raw_attribute('price'))
         return 'S/ {0:.2g}'.format(price)
-
-    @scope
-    def defaults(self, query):
-        return query.where_is_default(True)
-
-class Payment(Model):
-    __fillable__ = ['user_id', 'list_id']
-    __timestamps__ = False

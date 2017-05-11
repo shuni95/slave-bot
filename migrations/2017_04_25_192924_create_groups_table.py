@@ -8,9 +8,8 @@ class CreateGroupsTable(Migration):
         Run the migrations.
         """
         with self.schema.create('groups') as table:
-            table.increments('id')
+            table.big_integer('id').unique()
             table.string('title', 50)
-            table.big_integer('telegram_chat_id')
 
     def down(self):
         """

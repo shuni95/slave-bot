@@ -46,9 +46,10 @@ def create(bot, update):
     chat = update.message.chat
 
     if 'group' in chat['type']:
-        group = Group.where('telegram_chat_id', chat['id']).first()
+        group = Group.find(chat['id'])
+
         if group is None:
-            group = Group.create(telegram_chat_id=chat['id'],
+            group = Group.create(id=chat['id'],
                                  title=chat['title'])
 
         bot.send_message(chat_id=chat['id'],
@@ -57,20 +58,22 @@ def create(bot, update):
         list_active = group.lists().opened().first()
 
         if list_active is None:
-            user = User.where('telegram_chat_id', _from['id']).first()
+            user = User.find(_from['id'])
 
             if user is None:
-                user = User.create(name=_from['first_name'],
-                                   username=_from['username'],
-                                   telegram_chat_id=_from['id'])
+                user = User.create(id=_from['id'],
+                                   name=_from['first_name'],
+                                   username=_from['username'])
                 update.message.reply_text('Hola esclavo {}, mucho gusto.'.format(user.name))
             else:
                 update.message.reply_text('Hola esclavo {}'.format(user.name))
 
             group.lists().save(List(user_id=user.id))
-            bot.send_message(chat_id=chat['id'], text='Lista creada')
+            message = 'Lista creada'
         else:
-            bot.send_message(chat_id=chat['id'], text='Ya hay una lista abierta')
+            message = 'Ya hay una lista abierta'
+
+        bot.send_message(chat_id=chat['id'], text=message)
 
         send_items(bot, chat['id'])
     else:
@@ -84,19 +87,20 @@ def add(bot, update):
     _from = query.from_user
 
     item = Item.find(data[1])
-    group = Group.where('telegram_chat_id', chat['id']).first()
+    group = Group.find(chat['id'])
     list_active = group.lists().opened().first()
 
     if list_active is not None:
-        user = User.where('telegram_chat_id', _from['id']).first()
+        user = User.find(_from['id'])
 
         if user is None:
-            user = User.create(name=_from['first_name'],
-                               username=_from['username'],
-                               telegram_chat_id=_from['id'])
+            user = User.create(id=_from['id'],
+                               name=_from['first_name'],
+                               username=_from['username'])
 
-        list_active.items().attach(item, {'user_id': user.id})
-        message = '{} fue agregado a la lista.'.format(item.name)
+        list_active.items().attach(item, {
+            'user_id': user.id, 'price': item.price})
+        message = '{} ha agregado {} a la lista.'.format(user.name, item.name)
     else:
         message = 'No hay una lista abierta'
 
@@ -107,18 +111,25 @@ def items(bot, update):
     send_items(bot, chat['id'])
 
 def send_items(bot, chat_id):
-    items = Item.defaults().get()
+    items = Item.where('group_id', chat_id).get()
 
     keyboard = []
     for i in xrange(0, len(items), 2):
         left = items.get(i)
         right = items.get(i+1)
-        keyboard.append([
-            InlineKeyboardButton('{} - {}'.format(left.name, left.price_format),
-                callback_data='item {}'.format(left.id)),
-            InlineKeyboardButton('{} - {}'.format(right.name, right.price_format),
+
+        buttons = []
+        buttons.append(InlineKeyboardButton(
+            '{} - {}'.format(left.name, left.price_format),
+            callback_data='item {}'.format(left.id))
+        )
+        if right is not None:
+            buttons.append(InlineKeyboardButton(
+                '{} - {}'.format(right.name, right.price_format),
                 callback_data='item {}'.format(right.id))
-        ])
+            )
+
+        keyboard.append(buttons)
 
     bot.send_message(chat_id=chat_id, text='Escoge un producto',
                      reply_markup=InlineKeyboardMarkup(keyboard))
@@ -129,7 +140,7 @@ def check_slave(list_active, _from):
 def close(bot, update):
     chat = update.message.chat
     _from = update.message.from_user
-    group = Group.where('telegram_chat_id', chat['id']).first()
+    group = Group.find(chat['id'])
     list_active = group.lists().opened().first()
 
     if list_active is not None:
@@ -146,7 +157,7 @@ def close(bot, update):
 def _open(bot, update):
     chat = update.message.chat
     _from = update.message.from_user
-    group = Group.where('telegram_chat_id', chat['id']).first()
+    group = Group.find(chat['id'])
     list_active = group.lists().closed().first()
     is_slave = False
 
@@ -167,13 +178,12 @@ def _open(bot, update):
 
 def _list(bot, update):
     chat = update.message.chat
-    group = Group.where('telegram_chat_id', chat['id']).first()
+    group = Group.find(chat['id'])
     list_active = group.lists().opened().first()
 
     if list_active is not None:
         user_amounts = db.table('list_x_item')\
-            .select(db.raw('sum(items.price) as total, users.name, users.id as user_id'))\
-            .join('items', 'list_x_item.item_id', '=', 'items.id')\
+            .select(db.raw('sum(list_x_item.price) as total, users.name, users.id as user_id'))\
             .join('users', 'list_x_item.user_id', '=', 'users.id')\
             .where('list_id', list_active.id)\
             .group_by('list_x_item.user_id')\
@@ -185,7 +195,7 @@ def _list(bot, update):
 
             for user_amount in user_amounts:
                 message += "{} S/{}\n".format(
-                    user_amount.name, str(user_amount.total/100))
+                    user_amount.name, str(user_amount.total))
 
                 user_items = all_items.filter(
                     lambda item: item.pivot.user_id == user_amount.user_id)
@@ -200,14 +210,13 @@ def _list(bot, update):
 
 def paylist(bot, update):
     chat = update.message.chat
-    group = Group.where('telegram_chat_id', chat['id']).first()
+    group = Group.find(chat['id'])
     list_active = group.lists().opened().first()
 
     if list_active is not None:
         message = ''
         user_amounts = db.table('list_x_item')\
-            .select(db.raw('sum(items.price) as total, users.name, users.id as user_id'))\
-            .join('items', 'list_x_item.item_id', '=', 'items.id')\
+            .select(db.raw('sum(list_x_item.price) as total, users.name, users.id as user_id'))\
             .join('users', 'list_x_item.user_id', '=', 'users.id')\
             .where('list_id', list_active.id)\
             .group_by('list_x_item.user_id')\
@@ -225,7 +234,7 @@ def paylist(bot, update):
 
             keyboard.append([
                 InlineKeyboardButton(u'{} - S/{}'.format(
-                    user_amount.name, str(user_amount.total/100)),
+                    user_amount.name, str(user_amount.total)),
                     callback_data='pay {} {}'.format(
                         user_amount.user_id, list_active.id)
                 )
@@ -243,7 +252,7 @@ def pay(bot, update):
     print(data)
     chat = query.message.chat
     _from = query.from_user
-    group = Group.where('telegram_chat_id', chat['id']).first()
+    group = Group.find(chat['id'])
     list_closed = group.lists().closed().first()
     user_id = data[1]
     list_id = data[2]

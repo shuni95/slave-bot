@@ -9,8 +9,8 @@ class CreateListsTable(Migration):
         with self.schema.create('lists') as table:
             table.increments('id')
             table.char('status', 1).default('O')
-            table.integer('group_id').unsigned()
-            table.integer('user_id').unsigned()
+            table.big_integer('group_id')
+            table.big_integer('user_id')
             table.timestamps()
 
     def down(self):

@@ -17,16 +17,20 @@ db = DatabaseManager(config)
 Model.set_connection_resolver(db)
 
 class User(Model):
-    __fillable__ = ['name', 'username', 'telegram_chat_id']
+    __fillable__ = ['id', 'name', 'username']
     __timestamps__ = False
 
 class Group(Model):
-    __fillable__ = ['title', 'telegram_chat_id']
+    __fillable__ = ['id', 'title']
     __timestamps__ = False
 
     @has_many
     def lists(self):
         return List
+
+    @has_many
+    def items(self):
+        return Item
 
 class List(Model):
     OPENED = 'O'
@@ -39,7 +43,7 @@ class List(Model):
     def group(self):
         return Group
 
-    @belongs_to_many('list_x_item', with_pivot=['user_id'])
+    @belongs_to_many('list_x_item', with_pivot=['user_id', 'price'])
     def items(self):
         return Item
 
@@ -70,10 +74,14 @@ class Item(Model):
     def lists(self):
         return List
 
+    @belongs_to
+    def group(self):
+        return Group
+
     @accessor
     def price_format(self):
         price = float(self.get_raw_attribute('price'))
-        return 'S/ {0:.2g}'.format(price / 100)
+        return 'S/ {0:.2g}'.format(price)
 
     @scope
     def defaults(self, query):

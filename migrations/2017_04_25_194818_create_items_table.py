@@ -10,8 +10,8 @@ class CreateItemsTable(Migration):
         with self.schema.create('items') as table:
             table.increments('id')
             table.string('name')
-            table.integer('price')
-            table.boolean('is_default')
+            table.float('price')
+            table.big_integer('group_id')
 
     def down(self):
         """

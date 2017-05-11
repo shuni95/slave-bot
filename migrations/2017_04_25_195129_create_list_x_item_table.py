@@ -11,7 +11,8 @@ class CreateListXItemTable(Migration):
             table.increments('id')
             table.integer('list_id').unsigned()
             table.integer('item_id').unsigned()
-            table.integer('user_id').unsigned()
+            table.big_integer('user_id')
+            table.float('price')
 
     def down(self):
         """

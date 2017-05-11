@@ -10,7 +10,7 @@ class CreatePaymentsTable(Migration):
         with self.schema.create('payments') as table:
             table.increments('id')
             table.integer('list_id').unsigned()
-            table.integer('user_id').unsigned()
+            table.big_integer('user_id')
 
     def down(self):
         """

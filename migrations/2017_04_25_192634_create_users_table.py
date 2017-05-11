@@ -8,10 +8,9 @@ class CreateUsersTable(Migration):
         Run the migrations.
         """
         with self.schema.create('users') as table:
-            table.increments('id')
+            table.big_integer('id').unique()
             table.string('name', 50)
             table.string('username', 50)
-            table.big_integer('telegram_chat_id')
 
     def down(self):
         """

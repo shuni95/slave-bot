@@ -135,7 +135,7 @@ def send_items(bot, chat_id):
                      reply_markup=InlineKeyboardMarkup(keyboard))
 
 def check_slave(list_active, _from):
-    return list_active.slave.telegram_chat_id == _from.id
+    return list_active.slave.id == _from.id
 
 def close(bot, update):
     chat = update.message.chat
@@ -176,18 +176,21 @@ def _open(bot, update):
     if is_slave:
         send_items(bot, chat['id'])
 
+def get_user_amounts(_list):
+    return db.table('list_x_item')\
+             .select(db.raw('sum(list_x_item.price) as total, users.name, users.id as user_id'))\
+             .join('users', 'list_x_item.user_id', '=', 'users.id')\
+             .where('list_id', _list.id)\
+             .group_by('list_x_item.user_id')\
+             .get()
+
 def _list(bot, update):
     chat = update.message.chat
     group = Group.find(chat['id'])
     list_active = group.lists().opened().first()
 
     if list_active is not None:
-        user_amounts = db.table('list_x_item')\
-            .select(db.raw('sum(list_x_item.price) as total, users.name, users.id as user_id'))\
-            .join('users', 'list_x_item.user_id', '=', 'users.id')\
-            .where('list_id', list_active.id)\
-            .group_by('list_x_item.user_id')\
-            .get()
+        user_amounts = get_user_amounts(list_active)
 
         if len(user_amounts) > 0:
             message = ""
@@ -208,6 +211,17 @@ def _list(bot, update):
 
     bot.send_message(chat_id=chat['id'], text=message)
 
+def paylist_message(user_amounts):
+    if len(user_amounts) > 0:
+        message = "Lista de Pagos\n"
+        for user_amount in user_amounts:
+            message += "{} S/{}\n".format(
+                    user_amount.name, str(user_amount.total))
+    else:
+        message = 'Lista vacia'
+
+    return message
+
 def paylist(bot, update):
     chat = update.message.chat
     group = Group.find(chat['id'])
@@ -215,64 +229,16 @@ def paylist(bot, update):
 
     if list_active is not None:
         message = ''
-        user_amounts = db.table('list_x_item')\
-            .select(db.raw('sum(list_x_item.price) as total, users.name, users.id as user_id'))\
-            .join('users', 'list_x_item.user_id', '=', 'users.id')\
-            .where('list_id', list_active.id)\
-            .group_by('list_x_item.user_id')\
-            .get()
-
-        keyboard = []
-        for user_amount in user_amounts:
-            payment = Payment.where('list_id', list_active.id)\
-                             .where('user_id', user_amount.user_id)\
-                             .first()
-
-            # To - Do
-            # Print grin emoji when exists
-            # And angry when not exists
-
-            keyboard.append([
-                InlineKeyboardButton(u'{} - S/{}'.format(
-                    user_amount.name, str(user_amount.total)),
-                    callback_data='pay {} {}'.format(
-                        user_amount.user_id, list_active.id)
-                )
-            ])
-
-        bot.send_message(chat_id=chat['id'], text='Lista de pagos',
-                     reply_markup=InlineKeyboardMarkup(keyboard))
+        user_amounts = get_user_amounts(list_active)
+        message = paylist_message(user_amounts)
     else:
-        message = 'No hay lista abierta'
-        bot.send_message(chat_id=chat['id'], text=message)
+        list_active = group.lists().closed().first()
 
-def pay(bot, update):
-    query = update.callback_query
-    data = query.data.split()
-    print(data)
-    chat = query.message.chat
-    _from = query.from_user
-    group = Group.find(chat['id'])
-    list_closed = group.lists().closed().first()
-    user_id = data[1]
-    list_id = data[2]
-
-    if list_closed is not None:
-        if check_slave(list_closed, _from):
-            payment = Payment.where('list_id', list_id)\
-                             .where('user_id', user_id)\
-                             .first()
-            user = User.find(user_id)
-
-            if payment is None:
-                Payment.create(user_id=user_id, list_id=list_id)
-                message = '{} ha pagado.'.format(user.name)
-            else:
-                message = '{} ya pago anteriormente.'.format(user.name)
+        if list_active is not None:
+            user_amounts = get_user_amounts(list_active)
+            message = paylist_message(user_amounts)
         else:
-            message = 'Solo el esclavo puede decir si alguien pago su deuda'
-    else:
-        message = 'La lista debe estar cerrada para realizar los pagos'
+            message = 'Aun no hay listas en el grupo'
 
     bot.send_message(chat_id=chat['id'], text=message)
 
@@ -285,7 +251,6 @@ updater.dispatcher.add_handler(CommandHandler('open', _open))
 updater.dispatcher.add_handler(CommandHandler('list', _list))
 updater.dispatcher.add_handler(CommandHandler('paylist', paylist))
 updater.dispatcher.add_handler(CallbackQueryHandler(add, pattern='item [0-9]+'))
-updater.dispatcher.add_handler(CallbackQueryHandler(pay, pattern='pay [0-9]+ [0-9]+'))
 
 @app.route('/HOOK', methods=['POST'])
 def webhook_handler():

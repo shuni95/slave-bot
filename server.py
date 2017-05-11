@@ -267,6 +267,21 @@ def add_item(bot, update):
 
     bot.send_message(chat_id=chat['id'], text=message)
 
+def del_item(bot, update):
+    chat = update.message.chat
+    text = update.message.text[10:]
+    group = Group.find(chat['id'])
+
+    item = group.items().where('name', text).first()
+
+    if item is not None:
+        item.delete()
+        message = '{} ha sido eliminado de los items'.format(text)
+    else:
+        message = 'Ingrese el nombre tal cual esta en la lista'
+
+    bot.send_message(chat_id=chat['id'], text=message)
+
 updater.dispatcher.add_handler(CommandHandler('start', start))
 updater.dispatcher.add_handler(CommandHandler('help', _help))
 updater.dispatcher.add_handler(CommandHandler('create', create))
@@ -277,6 +292,7 @@ updater.dispatcher.add_handler(CommandHandler('list', _list))
 updater.dispatcher.add_handler(CommandHandler('paylist', paylist))
 updater.dispatcher.add_handler(CallbackQueryHandler(add, pattern='item [0-9]+'))
 updater.dispatcher.add_handler(CommandHandler('add_item', add_item))
+updater.dispatcher.add_handler(CommandHandler('del_item', del_item))
 
 @app.route('/telegram_hook', methods=['POST'])
 def webhook_handler():

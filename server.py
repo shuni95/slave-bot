@@ -252,7 +252,7 @@ updater.dispatcher.add_handler(CommandHandler('list', _list))
 updater.dispatcher.add_handler(CommandHandler('paylist', paylist))
 updater.dispatcher.add_handler(CallbackQueryHandler(add, pattern='item [0-9]+'))
 
-@app.route('/HOOK', methods=['POST'])
+@app.route('/telegram_hook', methods=['POST'])
 def webhook_handler():
     if request.method == "POST":
         # retrieve the message in JSON and then transform it to Telegram object
@@ -261,13 +261,9 @@ def webhook_handler():
     return 'ok'
 
 
-@app.route('/set_webhook', methods=['GET', 'POST'])
+@app.route('/sw', methods=['GET', 'POST'])
 def set_webhook():
-    s = bot.setWebhook(SITE_URL + '/HOOK')
-    if s:
-        return "webhook setup ok"
-    else:
-        return "webhook setup failed"
+    return "webhook setup ok" if bot.setWebhook(SITE_URL + '/telegram_hook') else "webhook setup failed"
 
 @app.route('/')
 def index():

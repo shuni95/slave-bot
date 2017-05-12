@@ -188,6 +188,13 @@ def get_user_amounts(_list):
              .group_by('list_x_item.user_id')\
              .get()
 
+def get_list_items(_list):
+    return db.table('list_x_item')\
+             .select(db.raw('list_x_item.user_id, list_x_item.item_id, list_x_item.price, items.name'))\
+             .join('items', 'list_x_item.item_id', '=', 'items.id')\
+             .where('list_id', _list.id)\
+             .get()
+
 def _list(bot, update):
     chat = update.message.chat
     group = Group.find(chat['id'])
@@ -198,16 +205,16 @@ def _list(bot, update):
 
         if len(user_amounts) > 0:
             message = ""
-            all_items = list_active.items
+            all_items = get_list_items(list_active)
 
             for user_amount in user_amounts:
                 message += "{} S/{}\n".format(
                     user_amount.name, str(user_amount.total))
 
                 user_items = all_items.filter(
-                    lambda item: item.pivot.user_id == user_amount.user_id)
+                    lambda item: item.user_id == user_amount.user_id)
                 for item in user_items:
-                    message += "> {} {}\n".format(item.name, item.price_format)
+                    message += "> {} {}\n".format(item.name, item.price)
         else:
             message = "No hay elementos en la lista"
     else:

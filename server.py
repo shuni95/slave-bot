@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import sys, os, logging
 from flask import Flask, request
@@ -7,6 +6,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 import telegram
 from emoji import emojize
 from models import User, Group, List, Item, db
+from pendulum import Pendulum
 
 sys.path.append(os.path.join(os.path.abspath('.'), 'venv/lib/site-packages'))
 logging.basicConfig(level=logging.DEBUG,
@@ -73,6 +73,7 @@ def create(bot, update):
             _list = List()
             _list.user_id = _from['id']
             _list.group_id = chat['id']
+            _list.created_at = Pendulum.now()
             _list.save()
 
             message = 'Lista creada'

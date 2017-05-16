@@ -41,6 +41,8 @@ class List(Model):
 
     __fillable__ = ['status', 'user_id', 'group_id']
 
+    __timestamps__ = False
+
     @belongs_to
     def group(self):
         return Group

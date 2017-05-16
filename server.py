@@ -142,7 +142,7 @@ def send_items(bot, chat_id):
                      reply_markup=InlineKeyboardMarkup(keyboard))
 
 def check_slave(list_active, _from):
-    return list_active.slave.id == _from.id
+    return list_active.user_id == _from.id
 
 def close(bot, update):
     chat = update.message.chat

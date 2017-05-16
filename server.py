@@ -37,7 +37,9 @@ def _help(bot, update):
     message += "/close - Cerrar Lista de pedidos\n"
     message += "/open - Reabrir Lista de pedidos\n"
     message += "/list - Mostrar detalle de lista de pedido actual\n"
-    message += "/paylist - Mostrar nombre y monto de lista de pedido actual"
+    message += "/paylist - Mostrar nombre y monto de lista de pedido actual\n"
+    message += "/add_item - Agregar item a la lista de items del grupo\n"
+    message += "/del_item - Eliminar item de la lista de items del grupo"
 
     bot.send_message(chat_id=chat['id'], text=message)
 
